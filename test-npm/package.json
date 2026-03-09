@@ -1,0 +1,10 @@
+{
+  "name": "@lovc21/hello-world-provenance-test",
+  "version": "0.0.3",
+  "description": "Test package for publish-npm-provenance action",
+  "main": "index.js",
+  "license": "ISC",
+  "publishConfig": {
+    "access": "public"
+  }
+}
