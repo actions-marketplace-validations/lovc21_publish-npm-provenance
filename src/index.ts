@@ -43,7 +43,10 @@ export async function run(): Promise<void> {
     core.info('Skipping version check (strict_version=false)');
   }
 
-  await exec.exec('sudo', ['npm', 'install', '-g', 'npm@latest', 'pnpm']);
+  await exec.exec('npm', ['install', '-g', 'pnpm']);
+
+  const homeDir = process.env['HOME'] ?? process.env['USERPROFILE'] ?? '';
+  fs.writeFileSync(path.join(homeDir, '.npmrc'), 'registry=https://registry.npmjs.org/\n');
 
   await exec.exec('pnpm', ['install', '--frozen-lockfile'], { cwd: absProjectDir });
 
