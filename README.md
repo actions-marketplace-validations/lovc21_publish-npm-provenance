@@ -4,15 +4,9 @@ This action automates publishing a Node.js package to the npm registry using pnp
 
 ## Usage
 
+This action uses [trusted publishing](https://docs.npmjs.com/trusted-publishers) via OIDC. Before using this action, [set up a trusted publisher](https://docs.npmjs.com/trusted-publishers#configuring-trusted-publishing) for your package on npmjs.com.
+
 Add the following to your workflow file:
-
-```yaml
-- uses: lovc21/publish-npm-provenance@main
-  env:
-    NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-```
-
-The workflow must run on a tag push and have `id-token: write` permission for provenance:
 
 ```yaml
 on:
@@ -24,15 +18,13 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write
+      id-token: write # required for trusted publishing
     steps:
       - uses: actions/checkout@v4
       - uses: lovc21/publish-npm-provenance@main
         with:
           # Optional: set if package.json is not in the root (e.g. app/)
           # path: app
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 ```
 
 ## Verifying provenance signature
@@ -97,9 +89,3 @@ cosign verify-blob-attestation \
 | `debug_mode`         | boolean | `false`               | Print debug information on failure                              |
 | `regex_stable_tag`   | string  | `v1.0.0` pattern      | Regex to match stable release tags                              |
 | `regex_unstable_tag` | string  | `v1.0.0-rc.1` pattern | Regex to match beta release tags (rc/alpha)                     |
-
-## Secrets
-
-| Secret      | Description                                                                                               |
-| ----------- | --------------------------------------------------------------------------------------------------------- |
-| `NPM_TOKEN` | npm access token with publish permissions. Pass as `NODE_AUTH_TOKEN` or `NPM_TOKEN` environment variable. |

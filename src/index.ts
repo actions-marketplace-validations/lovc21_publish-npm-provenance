@@ -45,16 +45,6 @@ export async function run(): Promise<void> {
 
   await exec.exec('npm', ['install', '-g', 'pnpm']);
 
-  const npmToken = process.env['NODE_AUTH_TOKEN'] ?? process.env['NPM_TOKEN'] ?? '';
-  if (!npmToken) {
-    core.setFailed('No npm auth token found. Set NODE_AUTH_TOKEN or NPM_TOKEN.');
-    return;
-  }
-  fs.writeFileSync(
-    path.join(absProjectDir, '.npmrc'),
-    `//registry.npmjs.org/:_authToken=${npmToken}\n`,
-  );
-
   await exec.exec('pnpm', ['install', '--frozen-lockfile'], { cwd: absProjectDir });
 
   const hasBuild = (packageJson as { scripts?: Record<string, string> }).scripts?.['build'];

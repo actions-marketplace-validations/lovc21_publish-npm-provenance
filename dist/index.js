@@ -40,6 +40,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.run = run;
 const core = __importStar(__nccwpck_require__(7484));
 const exec = __importStar(__nccwpck_require__(5236));
 const fs = __importStar(__nccwpck_require__(9896));
@@ -57,20 +58,16 @@ async function run() {
         core.info('skip_publish is true, skipping.');
         return;
     }
-    const absProjectDir = path.resolve(projectDir);
-    // Read package.json version
-    const packageJsonPath = path.join(absProjectDir, 'package.json');
-    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-    const packageVersion = packageJson.version;
-    // Get tag from GitHub context
     const commitTag = process.env['GITHUB_REF_NAME'] ?? '';
     if (!commitTag) {
         core.setFailed('No tag found. This action must run on a tag push event.');
         return;
     }
-    // Strip monorepo prefix (e.g. service/v1.0.0 -> v1.0.0)
     const tagVersion = commitTag.replace(/^[a-zA-Z0-9_-]+\//, '');
-    // Version check
+    const absProjectDir = path.resolve(projectDir);
+    const packageJsonPath = path.join(absProjectDir, 'package.json');
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    const packageVersion = packageJson.version;
     if (strictVersion) {
         const normalizedTag = tagVersion.replace(/^v/, '');
         if (normalizedTag !== packageVersion) {
@@ -82,18 +79,8 @@ async function run() {
     else {
         core.info('Skipping version check (strict_version=false)');
     }
-    // Ensure pnpm is available
     await exec.exec('npm', ['install', '-g', 'pnpm']);
-    // Configure npm auth token
-    const npmToken = process.env['NODE_AUTH_TOKEN'] ?? process.env['NPM_TOKEN'] ?? '';
-    if (!npmToken) {
-        core.setFailed('No npm auth token found. Set NODE_AUTH_TOKEN or NPM_TOKEN.');
-        return;
-    }
-    fs.writeFileSync(path.join(absProjectDir, '.npmrc'), `//registry.npmjs.org/:_authToken=${npmToken}\n`);
-    // Install and build
     await exec.exec('pnpm', ['install', '--frozen-lockfile'], { cwd: absProjectDir });
-    // Only run build if the script exists
     const hasBuild = packageJson.scripts?.['build'];
     if (hasBuild) {
         await exec.exec('pnpm', ['build'], { cwd: absProjectDir });
@@ -101,12 +88,10 @@ async function run() {
     else {
         core.info('No build script found, skipping build.');
     }
-    // Build publish args
     const publishArgs = ['publish', '--access', npmAccess, '--no-git-checks'];
     if (npmProvenance) {
         publishArgs.push('--provenance');
     }
-    // Determine stable vs beta
     const stableRegex = new RegExp(regexStable);
     const unstableRegex = new RegExp(regexUnstable);
     if (stableRegex.test(commitTag)) {

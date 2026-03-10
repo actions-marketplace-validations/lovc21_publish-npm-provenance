@@ -18,5 +18,3 @@ jobs:
         with:
           path: test-npm
           npm_access: public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

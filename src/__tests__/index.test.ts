@@ -15,7 +15,6 @@ const mockGetInput = core.getInput as jest.MockedFunction<typeof core.getInput>;
 const mockSetFailed = core.setFailed as jest.MockedFunction<typeof core.setFailed>;
 const mockExec = exec.exec as jest.MockedFunction<typeof exec.exec>;
 const mockReadFileSync = fs.readFileSync as jest.MockedFunction<typeof fs.readFileSync>;
-const mockWriteFileSync = fs.writeFileSync as jest.MockedFunction<typeof fs.writeFileSync>;
 
 function setupInputs(overrides: Record<string, string> = {}) {
   const defaults: Record<string, string> = {
@@ -33,26 +32,31 @@ function setupInputs(overrides: Record<string, string> = {}) {
   mockGetInput.mockImplementation((name) => defaults[name] ?? '');
 }
 
-function setupPackageJson(version: string, hasBUILD = false) {
+function setupPackageJson(version: string, hasBuild = false) {
   const pkg = {
     version,
-    ...(hasBUILD ? { scripts: { build: 'tsc' } } : {}),
+    ...(hasBuild ? { scripts: { build: 'tsc' } } : {}),
   };
   mockReadFileSync.mockReturnValue(JSON.stringify(pkg));
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockWriteFileSync.mockImplementation(() => undefined);
   mockExec.mockResolvedValue(0);
   process.env['GITHUB_REF_NAME'] = 'v1.0.0';
-  process.env['NODE_AUTH_TOKEN'] = 'npm_test_token';
 });
 
 afterEach(() => {
   delete process.env['GITHUB_REF_NAME'];
-  delete process.env['NODE_AUTH_TOKEN'];
-  delete process.env['NPM_TOKEN'];
+});
+
+describe('skip_publish', () => {
+  it('exits early when skip_publish is true', async () => {
+    setupInputs({ skip_publish: 'true' });
+    await run();
+    expect(mockExec).not.toHaveBeenCalled();
+    expect(mockSetFailed).not.toHaveBeenCalled();
+  });
 });
 
 describe('tag validation', () => {
@@ -99,26 +103,6 @@ describe('version check', () => {
   });
 });
 
-describe('auth token', () => {
-  it('fails when no auth token is set', async () => {
-    setupInputs();
-    setupPackageJson('1.0.0');
-    delete process.env['NODE_AUTH_TOKEN'];
-    delete process.env['NPM_TOKEN'];
-    await run();
-    expect(mockSetFailed).toHaveBeenCalledWith(expect.stringContaining('No npm auth token'));
-  });
-
-  it('accepts NPM_TOKEN as fallback', async () => {
-    setupInputs();
-    setupPackageJson('1.0.0');
-    delete process.env['NODE_AUTH_TOKEN'];
-    process.env['NPM_TOKEN'] = 'npm_fallback_token';
-    await run();
-    expect(mockSetFailed).not.toHaveBeenCalled();
-  });
-});
-
 describe('build step', () => {
   it('skips build when no build script exists', async () => {
     setupInputs();
@@ -159,6 +143,18 @@ describe('publishing', () => {
     expect(mockExec).toHaveBeenCalledWith(
       'pnpm',
       ['publish', '--access', 'public', '--no-git-checks', '--tag', 'beta'],
+      expect.any(Object),
+    );
+  });
+
+  it('adds --provenance flag when npm_provenance=true', async () => {
+    setupInputs({ npm_provenance: 'true' });
+    setupPackageJson('1.0.0');
+    process.env['GITHUB_REF_NAME'] = 'v1.0.0';
+    await run();
+    expect(mockExec).toHaveBeenCalledWith(
+      'pnpm',
+      expect.arrayContaining(['--provenance']),
       expect.any(Object),
     );
   });
