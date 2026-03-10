@@ -43,7 +43,6 @@ export async function run(): Promise<void> {
     core.info('Skipping version check (strict_version=false)');
   }
 
-  await exec.exec('npm', ['install', '-g', 'npm@latest']);
   await exec.exec('npm', ['install', '-g', 'pnpm']);
 
   const npmrcDir = process.env['RUNNER_TEMP'] ?? process.cwd();
@@ -77,10 +76,12 @@ export async function run(): Promise<void> {
 
   if (stableRegex.test(commitTag)) {
     core.info('Publishing STABLE release...');
-    await exec.exec('npm', publishArgs, { cwd: absProjectDir });
+    await exec.exec('npx', ['--yes', 'npm@latest', ...publishArgs], { cwd: absProjectDir });
   } else if (unstableRegex.test(commitTag)) {
     core.info('Publishing BETA release (rc/alpha)...');
-    await exec.exec('npm', [...publishArgs, '--tag', 'beta'], { cwd: absProjectDir });
+    await exec.exec('npx', ['--yes', 'npm@latest', ...publishArgs, '--tag', 'beta'], {
+      cwd: absProjectDir,
+    });
   } else {
     core.setFailed(
       `Tag '${commitTag}' does not match stable or unstable pattern.\n` +
