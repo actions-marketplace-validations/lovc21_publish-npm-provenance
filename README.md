@@ -35,6 +35,47 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 ```
 
+## Verifying provenance signature
+
+For full details see the [npm provenance documentation](https://docs.npmjs.com/generating-provenance-statements#verifying-provenance-attestations).
+
+Run this in any project that has your package as a dependency:
+
+```bash
+npm audit signatures
+```
+
+Or to verify a specific package:
+
+```bash
+mkdir /tmp/verify-test && cd /tmp/verify-test
+npm init -y
+npm install <your-package>
+npm audit signatures
+```
+
+### Verifying with cosign
+
+For advanced verification using [cosign](https://blog.sigstore.dev/cosign-verify-bundles/):
+
+```bash
+# 1. Download the package tarball
+curl https://registry.npmjs.org/<scope>/<package>/-/<package>-<version>.tgz > package.tgz
+
+# 2. Get the provenance bundle
+curl "https://registry.npmjs.org/-/npm/v1/attestations/<scope>/<package>@<version>" \
+  | jq '.attestations[]|select(.predicateType=="https://slsa.dev/provenance/v1").bundle' \
+  > provenance.sigstore.json
+
+# 3. Verify
+cosign verify-blob-attestation \
+  --bundle provenance.sigstore.json \
+  --new-bundle-format \
+  --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+  --certificate-identity-regexp="^https://github.com/<owner>/<repo>/.github/workflows/<workflow>.yml" \
+  package.tgz
+```
+
 ## Tag format
 
 | Tag example      | Publishes as                       |
