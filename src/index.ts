@@ -43,6 +43,7 @@ export async function run(): Promise<void> {
     core.info('Skipping version check (strict_version=false)');
   }
 
+  await exec.exec('npm', ['install', '-g', 'npm@latest']);
   await exec.exec('npm', ['install', '-g', 'pnpm']);
 
   const npmrcDir = process.env['RUNNER_TEMP'] ?? process.cwd();
